@@ -135,7 +135,7 @@ The object store uses [DigitalOcean Spaces](https://www.digitalocean.com/product
     kubectl -n heptio-ark edit config default
     ```
 
-    Below is a sample `persistentVolumeProvider` YAML Config section. Be sure to change the bucket and region placeholder values accordingly.
+    Below is a sample `backupStorageProvider` YAML Config section. Be sure to change the bucket and region placeholder values accordingly.
 
     ```
     backupStorageProvider:
