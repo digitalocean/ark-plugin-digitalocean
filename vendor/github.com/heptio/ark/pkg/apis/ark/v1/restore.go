@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Heptio Inc.
+Copyright 2017 the Heptio Ark contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,11 @@ type RestoreSpec struct {
 	// BackupName is the unique name of the Ark backup to restore
 	// from.
 	BackupName string `json:"backupName"`
+
+	// ScheduleName is the unique name of the Ark schedule to restore
+	// from. If specified, and BackupName is empty, Ark will restore
+	// from the most recent successful backup created from this schedule.
+	ScheduleName string `json:"scheduleName,omitempty"`
 
 	// IncludedNamespaces is a slice of namespace names to include objects
 	// from. If empty, all namespaces are included.
@@ -49,16 +54,16 @@ type RestoreSpec struct {
 	// LabelSelector is a metav1.LabelSelector to filter with
 	// when restoring individual objects from the backup. If empty
 	// or nil, all objects are included. Optional.
-	LabelSelector *metav1.LabelSelector `json:"labelSelector"`
+	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
 
 	// RestorePVs specifies whether to restore all included
 	// PVs from snapshot (via the cloudprovider).
-	RestorePVs *bool `json:"restorePVs"`
+	RestorePVs *bool `json:"restorePVs,omitempty"`
 
 	// IncludeClusterResources specifies whether cluster-scoped resources
 	// should be included for consideration in the restore. If null, defaults
 	// to true.
-	IncludeClusterResources *bool `json:"includeClusterResources"`
+	IncludeClusterResources *bool `json:"includeClusterResources,omitempty"`
 }
 
 // RestorePhase is a string representation of the lifecycle phase
@@ -80,6 +85,10 @@ const (
 	// RestorePhaseCompleted means the restore has finished executing.
 	// Any relevant warnings or errors will be captured in the Status.
 	RestorePhaseCompleted RestorePhase = "Completed"
+
+	// RestorePhaseFailed means the restore was unable to execute.
+	// The failing error is recorded in status.FailureReason.
+	RestorePhaseFailed RestorePhase = "Failed"
 )
 
 // RestoreStatus captures the current status of an Ark restore
@@ -98,6 +107,9 @@ type RestoreStatus struct {
 	// Errors is a count of all error messages that were generated during
 	// execution of the restore. The actual errors are stored in object storage.
 	Errors int `json:"errors"`
+
+	// FailureReason is an error that caused the entire restore to fail.
+	FailureReason string `json:"failureReason"`
 }
 
 // RestoreResult is a collection of messages that were generated

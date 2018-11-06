@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Heptio Inc.
+Copyright 2017 the Heptio Ark contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@ limitations under the License.
 package client
 
 import (
-	"github.com/pkg/errors"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 )
@@ -37,24 +36,17 @@ type DynamicFactory interface {
 
 // dynamicFactory implements DynamicFactory.
 type dynamicFactory struct {
-	clientPool dynamic.ClientPool
+	dynamicClient dynamic.Interface
 }
 
 // NewDynamicFactory returns a new ClientPool-based dynamic factory.
-func NewDynamicFactory(clientPool dynamic.ClientPool) DynamicFactory {
-	return &dynamicFactory{clientPool: clientPool}
+func NewDynamicFactory(dynamicClient dynamic.Interface) DynamicFactory {
+	return &dynamicFactory{dynamicClient: dynamicClient}
 }
 
 func (f *dynamicFactory) ClientForGroupVersionResource(gv schema.GroupVersion, resource metav1.APIResource, namespace string) (Dynamic, error) {
-	// client-go doesn't actually use the kind when getting the dynamic client from the client pool;
-	// it only needs the group and version.
-	dynamicClient, err := f.clientPool.ClientForGroupVersionKind(gv.WithKind(""))
-	if err != nil {
-		return nil, errors.Wrapf(err, "error getting client for GroupVersion %s, Resource %s", gv.String, resource.String())
-	}
-
 	return &dynamicResourceClient{
-		resourceClient: dynamicClient.Resource(&resource, namespace),
+		resourceClient: f.dynamicClient.Resource(gv.WithResource(resource.Name)).Namespace(namespace),
 	}, nil
 }
 
@@ -82,12 +74,20 @@ type Getter interface {
 	Get(name string, opts metav1.GetOptions) (*unstructured.Unstructured, error)
 }
 
+// Patcher patches an object.
+type Patcher interface {
+	//Patch patches the named object using the provided patch bytes, which are expected to be in JSON merge patch format. The patched object is returned.
+
+	Patch(name string, data []byte) (*unstructured.Unstructured, error)
+}
+
 // Dynamic contains client methods that Ark needs for backing up and restoring resources.
 type Dynamic interface {
 	Creator
 	Lister
 	Watcher
 	Getter
+	Patcher
 }
 
 // dynamicResourceClient implements Dynamic.
@@ -111,4 +111,8 @@ func (d *dynamicResourceClient) Watch(options metav1.ListOptions) (watch.Interfa
 
 func (d *dynamicResourceClient) Get(name string, opts metav1.GetOptions) (*unstructured.Unstructured, error) {
 	return d.resourceClient.Get(name, opts)
+}
+
+func (d *dynamicResourceClient) Patch(name string, data []byte) (*unstructured.Unstructured, error) {
+	return d.resourceClient.Patch(name, types.MergePatchType, data)
 }
