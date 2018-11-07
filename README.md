@@ -46,7 +46,7 @@ This quickstart will describe the installation and configuration of the DigitalO
         --from-literal digitalocean_token=<DIGITALOCEAN_TOKEN>
     ```
 
-4. Update the `examples/05-ark-backupstoragelocation.yaml` with the DigitalOcean Spaces API URL, bucket, and region and apply the `BackupStorageLocation` configuration.
+4. Update the `examples/05-ark-backupstoragelocation.yaml` with the DigitalOcean Spaces API URL, bucket, and region and apply the `BackupStorageLocation` configuration. The `BackupStorageLocation` uses the AWS S3-compatible provider to communicate with DigitalOcean Spaces.
 
     ```
     kubectl apply -f examples/05-ark-backupstoragelocation.yaml
