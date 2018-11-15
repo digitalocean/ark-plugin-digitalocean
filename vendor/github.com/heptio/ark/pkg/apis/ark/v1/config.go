@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Heptio Inc.
+Copyright 2017 the Heptio Ark contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,32 +40,6 @@ type Config struct {
 	// PersistentVolumeProvider is the configuration information for the cloud where
 	// the cluster is running and has PersistentVolumes to snapshot or restore. Optional.
 	PersistentVolumeProvider *CloudProviderConfig `json:"persistentVolumeProvider"`
-
-	// BackupStorageProvider is the configuration information for the cloud where
-	// Ark backups are stored in object storage. This may be a different cloud than
-	// where the cluster is running.
-	BackupStorageProvider ObjectStorageProviderConfig `json:"backupStorageProvider"`
-
-	// BackupSyncPeriod is how often the BackupSyncController runs to ensure all
-	// Ark backups in object storage exist as Backup API objects in the cluster.
-	BackupSyncPeriod metav1.Duration `json:"backupSyncPeriod"`
-
-	// GCSyncPeriod is how often the GCController runs to delete expired backup
-	// API objects and corresponding backup files in object storage.
-	GCSyncPeriod metav1.Duration `json:"gcSyncPeriod"`
-
-	// ScheduleSyncPeriod is how often the ScheduleController runs to check for
-	// new backups that should be triggered based on schedules.
-	ScheduleSyncPeriod metav1.Duration `json:"scheduleSyncPeriod"`
-
-	// ResourcePriorities is an ordered slice of resources specifying the desired
-	// order of resource restores. Any resources not in the list will be restored
-	// alphabetically after the prioritized resources.
-	ResourcePriorities []string `json:"resourcePriorities"`
-
-	// RestoreOnlyMode is whether Ark should run in a mode where only restores
-	// are allowed; backups, schedules, and garbage-collection are all disabled.
-	RestoreOnlyMode bool `json:"restoreOnlyMode"`
 }
 
 // CloudProviderConfig is configuration information about how to connect
@@ -74,16 +48,4 @@ type CloudProviderConfig struct {
 	Name string `json:"name"`
 
 	Config map[string]string `json:"config"`
-}
-
-// ObjectStorageProviderConfig is configuration information for connecting to
-// a particular bucket in object storage to access Ark backups.
-type ObjectStorageProviderConfig struct {
-	// CloudProviderConfig is the configuration information for the cloud where
-	// Ark backups are stored in object storage.
-	CloudProviderConfig `json:",inline"`
-
-	// Bucket is the name of the bucket in object storage where Ark backups
-	// are stored.
-	Bucket string `json:"bucket"`
 }

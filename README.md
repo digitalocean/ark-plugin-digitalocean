@@ -17,13 +17,13 @@ The following will describe how to install and configure the DigitalOcean block 
   * [Spaces access keys](https://www.digitalocean.com/docs/spaces/how-to/administrative-access/)
   * Spaces bucket
   * Spaces bucket region
-* [Heptio Ark](https://heptio.github.io/ark/master/quickstart.html) prerequisites
+* [Heptio Ark](https://heptio.github.io/ark/master/quickstart.html) v0.10.x prerequisites
 
 ### Quickstart
 
 This quickstart will describe the installation and configuration of the DigitalOcean block store plugin for Ark as well as the built-in object store using DigitalOcean Spaces. Please review the [Block store](#block-store) and [Object store](#object-store) sections further down in the README for more details on each component.
 
-1. Complete the Heptio Ark prerequisites mentioned above. This generally involves apply the `00-prereqs.yaml` available in the Ark repository:
+1. Complete the Heptio Ark prerequisites mentioned above. This generally involves applying the `00-prereqs.yaml` available from the Ark repository:
 
     ```
     kubectl apply -f examples/00-prereqs.yaml
@@ -46,22 +46,28 @@ This quickstart will describe the installation and configuration of the DigitalO
         --from-literal digitalocean_token=<DIGITALOCEAN_TOKEN>
     ```
 
-4. Update the `examples/10-ark-config.yaml` with the Spaces API URL, bucket, and region and apply the configuration:
+4. Update the `examples/05-ark-backupstoragelocation.yaml` with the DigitalOcean Spaces API URL, bucket, and region and apply the `BackupStorageLocation` configuration. The `BackupStorageLocation` uses the AWS S3-compatible provider to communicate with DigitalOcean Spaces.
 
     ```
-    kubectl apply -f examples/10-ark-config.yaml
+    kubectl apply -f examples/05-ark-backupstoragelocation.yaml
     ```
 
-5. Now apply the Ark deployment.
+5. Next apply the `VolumeSnapshotLocation` configuration. No updates are required to the YAML.
 
     ```
-    kubectl apply -f examples/20-deployment.yaml
+    kubectl apply -f examples/06-ark-volumesnapshotlocation.yaml
     ```
 
-6. Finally add the `ark-blockstore-digitalocean` plugin to Ark.
+6. Now apply the Ark deployment.
 
     ```
-    ark plugin add quay.io/stackpoint/ark-blockstore-digitalocean:latest
+    kubectl apply -f examples/10-deployment.yaml
+    ```
+
+7. Finally add the `ark-blockstore-digitalocean` plugin to Ark.
+
+    ```
+    ark plugin add quay.io/stackpoint/ark-blockstore-digitalocean:v0.2.0
     ```
 
 ### Block store

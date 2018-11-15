@@ -20,101 +20,103 @@
 #  name = "github.com/x/y"
 #  version = "2.4.0"
 
-required = [
-  "k8s.io/code-generator/cmd/client-gen",
-  # needed by generated clientsets, but not an explicit dep in client-gen itself
-  "k8s.io/apimachinery/pkg/apimachinery/registered",
+[prune]
+  unused-packages = true
+  non-go = true
+  go-tests = true
 
-  "k8s.io/code-generator/cmd/deepcopy-gen",
-  "k8s.io/code-generator/cmd/defaulter-gen",
-  "k8s.io/code-generator/cmd/lister-gen",
-  "k8s.io/code-generator/cmd/informer-gen",
-]
+#
+# Kubernetes packages
+#
+
+[[constraint]]
+  name = "k8s.io/kubernetes"
+  version = "~1.11"
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "~8.0"
+
+[[constraint]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.11.0"
+
+[[constraint]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.11.0"
+
+# vendor/k8s.io/apimachinery/pkg/runtime/serializer/json/json.go:104:16:
+# unknown field 'CaseSensitive' in struct literal of type jsoniter.Config
+[[override]]
+  name = "github.com/json-iterator/go"
+  revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
+
+# vendor/k8s.io/client-go/plugin/pkg/client/auth/azure/azure.go:300:25:
+# cannot call non-function spt.Token (type adal.Token)
+[[override]]
+  name = "github.com/Azure/go-autorest"
+  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
+
+#
+# Cloud provider packages
+#
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "1.13.12"
+
+[[constraint]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  version = "~11.3.0-beta"
 
 [[constraint]]
   name = "cloud.google.com/go"
   version = "0.11.0"
 
 [[constraint]]
-  name = "github.com/Azure/azure-sdk-for-go"
-  version = "~10.2.1-beta"
-
-[[constraint]]
-  name = "github.com/Azure/go-autorest"
-  version = "~8.1.x"
-
-[[constraint]]
-  name = "github.com/aws/aws-sdk-go"
-  version = "1.10.26"
-
-[[constraint]]
+  name = "google.golang.org/api"
   branch = "master"
+
+[[constraint]]
+  name = "golang.org/x/oauth2"
+  branch = "master"
+
+#
+# Third party packages
+#
+[[constraint]]
   name = "github.com/golang/glog"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/robfig/cron"
   revision = "df38d32658d8788cd446ba74db4bb5375c4b0cb3"
 
-[[constraint]]
-  name = "github.com/satori/go.uuid"
-  version = "1.1.0"
-
+# TODO(1.0) this repo is a redirect to github.com/satori/go.uuid. Our
+# current version of azure-sdk-for-go references this redirect, so
+# use it so we don't get a duplicate copy of this dependency.
+# Once our azure-sdk-for-go is updated to a newer version (where
+# their dependency has changed to .../go.uuid), switch this to
+# github.com/satori/go.uuid
 [[constraint]]
   name = "github.com/satori/uuid"
   version = "1.1.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/spf13/afero"
+  branch = "master"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/spf13/cobra"
+  version = "0.0.3"
 
 [[constraint]]
   name = "github.com/spf13/pflag"
-  version = "1.0.0"
+  version = "1.0.2"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  branch = "master"
+  version = "~1.2.2"
 
 [[constraint]]
-  branch = "master"
-  name = "golang.org/x/oauth2"
-
-[[constraint]]
-  branch = "master"
-  name = "google.golang.org/api"
-
-[[constraint]]
-  name = "k8s.io/apimachinery"
-  revision = "019ae5ada31de202164b118aee88ee2d14075c31"
-
-[[constraint]]
-  name = "k8s.io/client-go"
-  version = "~5.0"
-
-[[constraint]]
-  name = "k8s.io/kubernetes"
-  version = "~1.8"
-
-[[override]]
-  name = "github.com/russross/blackfriday"
-  revision = "93622da34e54fb6529bfb7c57e710f37a8d9cbd8"
-
-[[constraint]]
-  branch = "release-1.8"
-  name = "k8s.io/api"
-
-[[constraint]]
-  branch = "release-1.8"
-  name = "k8s.io/code-generator"
-
-[[override]]
-  name = "k8s.io/gengo"
-  revision = "9e661e9308f078838e266cca1c673922088c0ea4"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/hashicorp/go-plugin"
+  branch = "master"
