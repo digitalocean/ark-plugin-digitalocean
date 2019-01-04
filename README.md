@@ -67,7 +67,7 @@ This quickstart will describe the installation and configuration of the DigitalO
 7. Finally add the `ark-blockstore-digitalocean` plugin to Ark.
 
     ```
-    ark plugin add quay.io/stackpoint/ark-blockstore-digitalocean:v0.2.0
+    ark plugin add gcr.io/stackpoint-public/ark-blockstore-digitalocean:latest
     ```
 
 ### Block store
@@ -108,7 +108,7 @@ The block store provider manages snapshots for DigitalOcean persistent volumes.
 5. Finally, add the `ark-blockstore-digitalocean` plugin to Ark.
 
     ```
-    ark plugin add quay.io/stackpoint/ark-blockstore-digitalocean:latest
+    ark plugin add gcr.io/stackpoint-public/ark-blockstore-digitalocean:latest
     ```
 
 ### Object store
@@ -193,5 +193,5 @@ The object store uses [DigitalOcean Spaces](https://www.digitalocean.com/product
 
 ```
 make clean
-make container IMAGE=quay.io/stackpoint/ark-blockstore-digitalocean
+make container IMAGE=gcr.io/stackpoint-public/ark-blockstore-digitalocean:devel
 ```
