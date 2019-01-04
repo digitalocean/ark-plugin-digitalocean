@@ -18,7 +18,7 @@ REPO ?= github.com/StackPointCloud/ark-plugin-digitalocean
 
 BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
 
-IMAGE ?= quay.io/stackpoint/ark-blockstore-digitalocean
+IMAGE ?= gcr.io/stackpoint-public/ark-blockstore-digitalocean
 
 ARCH ?= amd64
 
