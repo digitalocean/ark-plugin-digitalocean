@@ -47,6 +47,7 @@ type domainRoot struct {
 type domainsRoot struct {
 	Domains []Domain `json:"domains"`
 	Links   *Links   `json:"links"`
+	Meta    *Meta    `json:"meta"`
 }
 
 // DomainCreateRequest respresents a request to create a domain.
@@ -121,6 +122,9 @@ func (s DomainsServiceOp) List(ctx context.Context, opt *ListOptions) ([]Domain,
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.Domains, resp, err
@@ -294,18 +298,18 @@ func (s *DomainsServiceOp) EditRecord(ctx context.Context,
 
 	path := fmt.Sprintf("%s/%s/records/%d", domainsBasePath, domain, id)
 
-	req, err := s.client.NewRequest(ctx, "PUT", path, editRequest)
+	req, err := s.client.NewRequest(ctx, http.MethodPut, path, editRequest)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	d := new(DomainRecord)
-	resp, err := s.client.Do(ctx, req, d)
+	root := new(domainRecordRoot)
+	resp, err := s.client.Do(ctx, req, root)
 	if err != nil {
 		return nil, resp, err
 	}
 
-	return d, resp, err
+	return root.DomainRecord, resp, err
 }
 
 // CreateRecord creates a record using a DomainRecordEditRequest

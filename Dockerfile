@@ -1,4 +1,4 @@
-# Copyright 2017 the Heptio Ark contributors.
+# Copyright 2017, 2019 the Velero contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.6
+FROM golang:1.13-buster AS build
+WORKDIR /go/src/github.com/digitalocean/velero-plugin
+# copy vendor in separately so the layer can be cached if the contents don't change
+COPY vendor vendor
+COPY velero-digitalocean velero-digitalocean
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -v -o /go/bin/velero-digitalocean ./velero-digitalocean
+
+
+FROM ubuntu:bionic
 RUN mkdir /plugins
-ADD ark-* /plugins/
+COPY --from=build /go/bin/velero-digitalocean /plugins/
 USER nobody:nobody
-ENTRYPOINT ["/bin/ash", "-c", "cp -a /plugins/* /target/."]
+ENTRYPOINT ["/bin/bash", "-c", "cp /plugins/* /target/."]

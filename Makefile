@@ -1,4 +1,4 @@
-# Copyright 2017 the Heptio Ark contributors.
+# Copyright 2017, 2019 the Velero contributors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,50 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-BINS = $(wildcard ark-*)
+PKG := github.com/digitalocean/velero-plugin
+BIN := velero-digitalocean
 
-REPO ?= github.com/StackPointCloud/ark-plugin-digitalocean
+REGISTRY 	?= digitalocean
+IMAGE 		?= $(REGISTRY)/velero-plugin
+VERSION 	?= master
 
-BUILD_IMAGE ?= gcr.io/heptio-images/golang:1.9-alpine3.6
+# Which architecture to build.
+# if the 'local' rule is being run, detect the GOOS/GOARCH from 'go env'
+# if it wasn't specified by the caller.
+local: GOOS ?= $(shell go env GOOS)
+GOOS ?= linux
 
-IMAGE ?= gcr.io/stackpoint-public/ark-blockstore-digitalocean
+local: GOARCH ?= $(shell go env GOARCH)
+GOARCH ?= amd64
 
-ARCH ?= amd64
+# local builds the binary using 'go build' in the local environment.
+local: build-dirs
+	GOOS=$(GOOS) \
+	GOARCH=$(GOARCH) \
+	PKG=$(PKG) \
+	BIN=$(BIN) \
+	OUTPUT_DIR=$$(pwd)/_output \
+	./hack/build.sh
 
-all: $(addprefix build-, $(BINS))
+# test runs unit tests using 'go test' in the local environment.
+test:
+	CGO_ENABLED=0 go test -v -timeout 60s ./...
 
-build-%:
-	$(MAKE) --no-print-directory BIN=$* build
+# ci is a convenience target for CI builds.
+ci: test
 
-build: _output/$(BIN)
+# container builds a Docker image containing the binary.
+container:
+	docker build -t $(IMAGE):$(VERSION) .
 
-_output/$(BIN): $(BIN)/*.go
-	mkdir -p .go/src/$(REPO) .go/pkg .go/std/$(ARCH) _output
-	docker run \
-				 --rm \
-				 -u $$(id -u):$$(id -g) \
-				 -v $$(pwd)/.go/pkg:/go/pkg \
-				 -v $$(pwd)/.go/src:/go/src \
-				 -v $$(pwd)/.go/std:/go/std \
-				 -v $$(pwd):/go/src/$(REPO) \
-				 -v $$(pwd)/.go/std/$(ARCH):/usr/local/go/pkg/linux_$(ARCH)_static \
-				 -e CGO_ENABLED=0 \
-				 -w /go/src/$(REPO) \
-				 $(BUILD_IMAGE) \
-				 go build -installsuffix "static" -i -v -o _output/$(BIN) ./$(BIN)
+# push pushes the Docker image to its registry.
+push:
+	@docker push $(IMAGE):$(VERSION)
+ifeq ($(TAG_LATEST), true)
+	docker tag $(IMAGE):$(VERSION) $(IMAGE):latest
+	docker push $(IMAGE):latest
+endif
 
-container: all
-	cp Dockerfile _output/Dockerfile
-	docker build -t $(IMAGE) -f _output/Dockerfile _output
+# build-dirs creates the necessary directories for a build in the local environment.
+build-dirs:
+	@mkdir -p _output
 
-all-ci: $(addprefix ci-, $(BINS))
-
-ci-%:
-	$(MAKE) --no-print-directory BIN=$* ci
-
-ci:
-	mkdir -p _output
-	CGO_ENABLED=0 go build -v -o _output/$(BIN) ./$(BIN)
-
+# clean removes build artifacts from the local environment.
 clean:
-	rm -rf .go _output
+	@echo "cleaning"
+	rm -rf _output
+
