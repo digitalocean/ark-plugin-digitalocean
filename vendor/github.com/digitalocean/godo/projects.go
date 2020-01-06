@@ -17,7 +17,7 @@ const (
 )
 
 // ProjectsService is an interface for creating and managing Projects with the DigitalOcean API.
-// See: https://developers.digitalocean.com/documentation/documentation/v2/#projects
+// See: https://developers.digitalocean.com/documentation/v2/#projects
 type ProjectsService interface {
 	List(context.Context, *ListOptions) ([]Project, *Response, error)
 	GetDefault(context.Context) (*Project, *Response, error)
@@ -125,6 +125,7 @@ type ProjectResourceLinks struct {
 type projectsRoot struct {
 	Projects []Project `json:"projects"`
 	Links    *Links    `json:"links"`
+	Meta     *Meta     `json:"meta"`
 }
 
 type projectRoot struct {
@@ -134,6 +135,7 @@ type projectRoot struct {
 type projectResourcesRoot struct {
 	Resources []ProjectResource `json:"resources"`
 	Links     *Links            `json:"links,omitempty"`
+	Meta      *Meta             `json:"meta"`
 }
 
 var _ ProjectsService = &ProjectsServiceOp{}
@@ -157,6 +159,9 @@ func (p *ProjectsServiceOp) List(ctx context.Context, opts *ListOptions) ([]Proj
 	}
 	if l := root.Links; l != nil {
 		resp.Links = l
+	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
 	}
 
 	return root.Projects, resp, err
@@ -238,6 +243,9 @@ func (p *ProjectsServiceOp) ListResources(ctx context.Context, projectID string,
 	if l := root.Links; l != nil {
 		resp.Links = l
 	}
+	if m := root.Meta; m != nil {
+		resp.Meta = m
+	}
 
 	return root.Resources, resp, err
 }
@@ -258,11 +266,11 @@ func (p *ProjectsServiceOp) AssignResources(ctx context.Context, projectID strin
 	}
 
 	for i, resource := range resources {
-		switch resource.(type) {
+		switch resource := resource.(type) {
 		case ResourceWithURN:
-			ar.Resources[i] = resource.(ResourceWithURN).URN()
+			ar.Resources[i] = resource.URN()
 		case string:
-			ar.Resources[i] = resource.(string)
+			ar.Resources[i] = resource
 		default:
 			return nil, nil, fmt.Errorf("%T must either be a string or have a valid URN method", resource)
 		}

@@ -1,35 +1,37 @@
 ## Getting Started
 
-The following will describe how to install and configure the DigitalOcean block store plugin for Ark and provide a usage example.
+This README explains how to install and configure the DigitalOcean Block Storage provider plugin for [Velero](https://velero.io). The plugin is designed to create filesystem  snapshots of Block Storage backed [PersistentVolumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) that are used in a Kubernetes cluster running on DigitalOcean.
 
-* [Prerequisites](#prerequisites)
-* [Quickstart](#quickstart)
-* [Block store](#block-store)
-* [Object store](#object-store)
-* [Backup and restore example](#backup-and-restore-example)
-* [Build image](#build-image)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Credentials setup](#credentials-setup)
+  - [Velero installation](#velero-installation)
+  - [Snapshot configuration](#snapshot-configuration)
+  - [Backup and restore example](#backup-and-restore-example)
+  - [Build the plugin](#build-the-plugin)
 
 ### Prerequisites
 
-* [Kubernetes cluster](https://stackpoint.io/clusters/new?provider=do)
+* A Kubernetes cluster running on DigitalOcean. It can be a managed cluster or self-hosted
 * DigitalOcean account and resources
   * [API personal access token](https://www.digitalocean.com/docs/api/create-personal-access-token/)
   * [Spaces access keys](https://www.digitalocean.com/docs/spaces/how-to/administrative-access/)
   * Spaces bucket
   * Spaces bucket region
-* [Heptio Ark](https://heptio.github.io/ark/master/quickstart.html) v0.10.x prerequisites
+* [Velero](https://velero.io/docs/v1.2.0/basic-install/) v1.20 or newer & prerequisites
 
-### Quickstart
+### Credentials setup
 
-This quickstart will describe the installation and configuration of the DigitalOcean block store plugin for Ark as well as the built-in object store using DigitalOcean Spaces. Please review the [Block store](#block-store) and [Object store](#object-store) sections further down in the README for more details on each component.
+1. To use this plugin with Velero to create persistent volume snapshots, you will need a [DigitalOcean API token](https://www.digitalocean.com/docs/api/create-personal-access-token/). Create one before proceeding with the rest of these steps.
 
-1. Complete the Heptio Ark prerequisites mentioned above. This generally involves applying the `00-prereqs.yaml` available from the Ark repository:
+2. For the object storage Velero component, generate a [Spaces access key and secret key](https://www.digitalocean.com/docs/spaces/how-to/administrative-access/)
 
-    ```
-    kubectl apply -f examples/00-prereqs.yaml
-    ```
 
-2. Update the `examples/credentials-ark` with your Spaces access and secret keys. The file will look like the following:
+### Velero installation
+
+1. Complete the Prerequisites and Credentials setup steps mentioned above.
+   
+2. Clone this repository. `cd` into the `examples` directory and edit the `cloud-credentials` file. The file will look like this:
 
     ```
     [default]
@@ -37,161 +39,98 @@ This quickstart will describe the installation and configuration of the DigitalO
     aws_secret_access_key=<AWS_SECRET_ACCESS_KEY>
     ```
 
-3. Create a Kubernetes `cloud-credentials` secret containing the `credentials-ark` and DigitalOcean API token.
+Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use your DigitalOcean Spaces keys. Be sure to remove the `<` and `>` characters.
+
+3. Still in the `examples` directory, edit the `01-velero-secret.patch.yaml` file. It should look like this:
 
     ```
-    kubectl create secret generic cloud-credentials \
-        --namespace heptio-ark \
-        --from-file cloud=examples/credentials-ark \
-        --from-literal digitalocean_token=<DIGITALOCEAN_TOKEN>
+    ---
+    apiVersion: v1
+    kind: Secret
+    stringData:
+    digitalocean_token: <DIGITALOCEAN_API_TOKEN>
+    type: Opaque
     ```
 
-4. Update the `examples/05-ark-backupstoragelocation.yaml` with the DigitalOcean Spaces API URL, bucket, and region and apply the `BackupStorageLocation` configuration. The `BackupStorageLocation` uses the AWS S3-compatible provider to communicate with DigitalOcean Spaces.
+   * Change the entire `<DIGITALOCEAN_API_TOKEN>` portion to use your DigitalOcean personal API token. The line should look something like `digitalocean_token: 18a0d730c0e0....`
+
+
+4. Now you're ready to install velero, configure the snapshot storage location, and work with backups. Ensure that you edit each of the following settings to match your Spaces configuration befor running the `velero install` command:
+   
+   * `--bucket velero-backups` - Ensure you change the `velero-backups` value to match the name of your Space.
+   * `--backup-location-config s3Url=https://nyc3.digitaloceanspaces.com,region=nyc3` - Change the URL and region to match your Space's settings. Specifically, edit the `nyc3` portion in both to match the region where your Space is hosted. Use one of `nyc3`, `sfo2`, `sgp1`, or `fra1` depending on your region.
+
+5. Now run the install command:
 
     ```
-    kubectl apply -f examples/05-ark-backupstoragelocation.yaml
+    velero install \
+        --provider velero.io/aws \
+        --bucket velero-backups \
+        --plugins velero/velero-plugin-for-aws:v1.0.0,digitalocean/velero-plugin:v1.0.0 \
+        --backup-location-config s3Url=https://nyc3.digitaloceanspaces.com,region=nyc3 \
+        --use-volume-snapshots=false \
+        --secret-file=./cloud-credentials
     ```
 
-5. Next apply the `VolumeSnapshotLocation` configuration. No updates are required to the YAML.
+### Snapshot configuration
+
+1. Enable the `digitalocean/velero-plugin:v1.0.0` snapshot provider. This command will configure Velero to use the plugin for persistent volume snapshots.
 
     ```
-    kubectl apply -f examples/06-ark-volumesnapshotlocation.yaml
+    velero snapshot-location create default --provider digitalocean.com/velero
     ```
 
-6. Now apply the Ark deployment.
+2. Patch the `cloud-credentials` Kubernetes Secret object that the `velero install` command installed in the cluster. This command will add your DigitalOcean API token to the `cloud-credentials` object so that this plugin can use the DigitalOcean API:
+
 
     ```
-    kubectl apply -f examples/10-deployment.yaml
+    kubectl patch secret cloud-credentials -p "$(cat 01-velero-secret.patch.yaml)" --namespace velero
     ```
 
-7. Finally add the `ark-blockstore-digitalocean` plugin to Ark.
+3. Patch the `velero` Kubernetes Deployment to expose your API token to the Velero pod(s). Velero needs this change in order to authenticate to the DigitalOcean API when manipulating snapshots:
 
     ```
-    ark plugin add gcr.io/stackpoint-public/ark-blockstore-digitalocean:latest
+    kubectl patch secret cloud-credentials -p "$(cat 02-velero-deployment.patch.yaml") --namespace velero
     ```
-
-### Block store
-
-The block store provider manages snapshots for DigitalOcean persistent volumes.
-
-1. The block store provider requires a personal access token to create and restore snapshots through the DigitalOcean API. This token can be generated through the DigitalOcean Control Panel as describe [here](https://www.digitalocean.com/docs/api/create-personal-access-token/).
-
-2. Once the token is available, create a Secret using the new token.
-
-    ```
-    kubectl create secret generic cloud-credentials \
-        --namespace heptio-ark \
-        --from-literal digitalocean_token=<DIGITALOCEAN_TOKEN>
-    ```
-
-3. Ark must be aware of the cloud provider to use with persistent volumes. This is done by adding the `persistentVolumeProvider` to the default Ark Config.
-
-    ```
-    kubectl -n heptio-ark edit config default
-    ```
-
-    A sample `persistentVolumeProvider` YAML Config section looks like the following:
-
-    ```
-    persistentVolumeProvider:
-      name: digitalocean
-    ```
-
-4. Next the Deployment should be updated with the `cloud-credentials` Secret.
-
-    ```
-    kubectl -n heptio-ark edit deployment ark
-    ```
-
-    A full Deployment YAML example defining the Secret can be found in `examples/20-deployment.yaml`.
-
-5. Finally, add the `ark-blockstore-digitalocean` plugin to Ark.
-
-    ```
-    ark plugin add gcr.io/stackpoint-public/ark-blockstore-digitalocean:latest
-    ```
-
-### Object store
-
-The object store uses [DigitalOcean Spaces](https://www.digitalocean.com/products/spaces/) to store the backup files. As Spaces is an S3-compatible object storage solution, the object store will use the Ark built-in `aws` provider.
-
-1. First generate the Spaces access key and secret key in the DigitalOcean Control Panel as described [here](https://www.digitalocean.com/docs/spaces/how-to/administrative-access/).
-
-2. A Spaces bucket must also be created through the DigitalOcean Control Panel before proceeding with Ark configuration. Make note of the bucket name and region as these will be required later.
-
-3. Once the access and secret keys are available, create an S3-compatible `credentials-ark` file with the new keys.
-
-    ```
-    [default]
-    aws_access_key_id=<DO_ACCESS_KEY_ID>
-    aws_secret_access_key=<DO_SECRET_ACCESS_KEY>
-    ```
-
-4. The `credentials-ark` file must then be added to the `cloud-credentinals` Secret:
-
-    ```
-    kubectl create secret generic cloud-credentials \
-        --namespace heptio-ark \
-        --from-file cloud=./credentials-ark
-    ```
-
-5. Now add the Ark `backupStorageProvider` to the Ark default Config.
-
-    ```
-    kubectl -n heptio-ark edit config default
-    ```
-
-    Below is a sample `backupStorageProvider` YAML Config section. Be sure to change the bucket and region placeholder values accordingly.
-
-    ```
-    backupStorageProvider:
-      name: aws
-      bucket: <YOUR_BUCKET>
-      config:
-        region: <REGION>
-        s3ForcePathStyle: "true"
-        s3Url: https://<REGION>.digitaloceanspaces.com
-    ```
-
-6. Finally, the Deployment can be updated with the `cloud-credentials` Secret.
-
-    ```
-    kubectl -n heptio-ark edit deployment ark
-    ```
-
-    A full Deployment YAML example can be found in `examples/20-deployment.yaml`.
 
 
 ### Backup and restore example
 
-1. Apply the Nginx `examples/nginx-pv.yml` config that uses persistent storage for the log path.
+1. Install the Nginx `examples/nginx-example.yaml` Deployment into your cluster. The example uses a persistent volume for Nginx logs. It also creates a LoadBalancer with a public IP address:
 
     ```
-    kubectl apply -f examples/nginx-pv.yml
+    kubectl apply -f examples/nginx-example.yaml
     ```
 
-2. Once Nginx deployment is running and available, create a backup using Ark.
+2. Ensure that your Nginx Deployment is running and there is a Service with an `EXTERNAL-IP` (`kubectl get service --namespace nginx-example`). Browse the IP a few times to write some log entries to the persistent volume. Then create a backup with Velero:
 
     ```
-    ark backup create nginx-backup --selector app=nginx
-    ark backup describe nginx-backup
+    velero backup create nginx-backup --selector app=nginx --snapshot-volumes=true
+    velero backup describe nginx-backup --details
     ```
 
-3. The config files should appear in the Spaces bucket and a snapshot taken of the persistent volume. Now you can simulate a disaster by deleting the `nginx-example` namespace.
+3. The various backup files will be in your Spaces bucket. A snapshot of the persistent volume will be listed in the DigitalOcean control panel under the *Images* link. Now you can simulate a disaster by deleting the `nginx-example` namespace.
 
     ```
     kubectl delete namespace nginx-example
     ```
 
-4. The `nginx-data` backup can now be restored.
+4. Once the delete finishes, restore the `nginx-backup` backup:
 
     ```
-    ark restore create --from-backup nginx-backup
+    velero restore create --from-backup nginx-backup
     ```
 
-### Build image
+5. Check the restored PersistentVolume, Deployment, and Service are back using `kubectl`:
+    ```
+    kubectl get persistentvolume --namespace nginx-example
+    kubectl get service --namespace nginx-example
+    kubectl get deployment --namespace nginx-example
+    ```
+
+### Build the plugin
 
 ```
 make clean
-make container IMAGE=gcr.io/stackpoint-public/ark-blockstore-digitalocean:devel
+make container IMAGE=digitalocean/velero-plugin:dev
 ```
