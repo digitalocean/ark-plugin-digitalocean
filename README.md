@@ -22,7 +22,7 @@ This README explains how to install and configure the DigitalOcean Block Storage
 
 ### Credentials setup
 
-1. To use this plugin with Velero to create persistent volume snapshots, you will need a [DigitalOcean API token](https://www.digitalocean.com/docs/api/create-personal-access-token/). Create one before proceeding with the rest of these steps.
+1. To use this plugin with Velero to create persistent volume snapshots, you will need a [DigitalOcean API token](https://www.digitalocean.com/docs/api/create-personal-access-token/). Create one before proceeding with the rest of these steps. Make sure your token has `Read/Write` permissions or snapshots will not work.
 
 2. For the object storage Velero component, generate a [Spaces access key and secret key](https://www.digitalocean.com/docs/spaces/how-to/administrative-access/)
 
@@ -55,10 +55,10 @@ Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use
    * Change the entire `<DIGITALOCEAN_API_TOKEN>` portion to use your DigitalOcean personal API token. The line should look something like `digitalocean_token: 18a0d730c0e0....`
 
 
-4. Now you're ready to install velero, configure the snapshot storage location, and work with backups. Ensure that you edit each of the following settings to match your Spaces configuration befor running the `velero install` command:
+4. Now you're ready to install velero, configure the snapshot storage location, and work with backups. Ensure that you edit each of the following settings to match your Spaces configuration before running the `velero install` command:
    
-   * `--bucket velero-backups` - Ensure you change the `velero-backups` value to match the name of your Space.
-   * `--backup-location-config s3Url=https://nyc3.digitaloceanspaces.com,region=nyc3` - Change the URL and region to match your Space's settings. Specifically, edit the `nyc3` portion in both to match the region where your Space is hosted. Use one of `nyc3`, `sfo2`, `sgp1`, or `fra1` depending on your region.
+   * `--bucket velero-backups`: Change the `velero-backups` value to match the name of your Space.
+   * `--backup-location-config s3Url=https://nyc3.digitaloceanspaces.com,region=nyc3`: Change the URL and region to match your Space's settings. Specifically, edit the `nyc3` portion in both to match the region where your Space is hosted. Use one of `nyc3`, `sfo2`, `sgp1`, or `fra1` depending on your region.
 
 5. Now run the install command:
 
@@ -84,13 +84,13 @@ Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use
 
 
     ```
-    kubectl patch secret cloud-credentials -p "$(cat 01-velero-secret.patch.yaml)" --namespace velero
+    kubectl patch secret/cloud-credentials -p "$(cat 01-velero-secret.patch.yaml)" --namespace velero
     ```
 
 3. Patch the `velero` Kubernetes Deployment to expose your API token to the Velero pod(s). Velero needs this change in order to authenticate to the DigitalOcean API when manipulating snapshots:
 
     ```
-    kubectl patch secret cloud-credentials -p "$(cat 02-velero-deployment.patch.yaml") --namespace velero
+    kubectl patch deployment/velero -p "$(cat 02-velero-deployment.patch.yaml") --namespace velero
     ```
 
 
@@ -133,4 +133,14 @@ Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use
 ```
 make clean
 make container IMAGE=digitalocean/velero-plugin:dev
+```
+
+### Delete Velero from your cluster
+
+If you're testing or have run into configuration issues and would like to start from scratch, the following commands will delete all the Velero objects from your Kubernetes cluster:
+
+```
+kubectl delete ns velero
+kubectl get crds |awk '/velero/ {print $1}' |xargs kubectl delete crds
+kubectl delete clusterrolebindings.rbac.authorization.k8s.io velero
 ```
