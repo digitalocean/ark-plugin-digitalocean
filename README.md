@@ -90,7 +90,7 @@ Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use
 3. Patch the `velero` Kubernetes Deployment to expose your API token to the Velero pod(s). Velero needs this change in order to authenticate to the DigitalOcean API when manipulating snapshots:
 
     ```
-    kubectl patch deployment/velero -p "$(cat 02-velero-deployment.patch.yaml") --namespace velero
+    kubectl patch deployment/velero -p "$(cat 02-velero-deployment.patch.yaml)" --namespace velero
     ```
 
 
