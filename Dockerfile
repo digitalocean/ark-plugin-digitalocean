@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.13-buster AS build
+FROM golang:1.17-buster AS build
 WORKDIR /go/src/github.com/digitalocean/velero-plugin
 # copy vendor in separately so the layer can be cached if the contents don't change
-COPY vendor vendor
-COPY velero-digitalocean velero-digitalocean
+ADD vendor vendor
+ADD velero-digitalocean velero-digitalocean
+ADD go.mod go.mod
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w" -v -o /go/bin/velero-digitalocean ./velero-digitalocean
 
 

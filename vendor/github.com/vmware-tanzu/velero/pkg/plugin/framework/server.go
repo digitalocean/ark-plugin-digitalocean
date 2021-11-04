@@ -1,5 +1,5 @@
 /*
-Copyright 2017, 2019 the Velero contributors.
+Copyright 2020 the Velero contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 
+	veleroflag "github.com/vmware-tanzu/velero/pkg/cmd/util/flag"
 	"github.com/vmware-tanzu/velero/pkg/util/logging"
 )
 
@@ -66,6 +67,13 @@ type Server interface {
 	// RegisterRestoreItemActions registers multiple restore item actions.
 	RegisterRestoreItemActions(map[string]HandlerInitializer) Server
 
+	// RegisterDeleteItemAction registers a delete item action. Accepted format
+	// for the plugin name is <DNS subdomain>/<non-empty name>.
+	RegisterDeleteItemAction(pluginName string, initializer HandlerInitializer) Server
+
+	// RegisterDeleteItemActions registers multiple Delete item actions.
+	RegisterDeleteItemActions(map[string]HandlerInitializer) Server
+
 	// Server runs the plugin server.
 	Serve()
 }
@@ -75,29 +83,36 @@ type server struct {
 	log               *logrus.Logger
 	logLevelFlag      *logging.LevelFlag
 	flagSet           *pflag.FlagSet
+	featureSet        *veleroflag.StringArray
 	backupItemAction  *BackupItemActionPlugin
 	volumeSnapshotter *VolumeSnapshotterPlugin
 	objectStore       *ObjectStorePlugin
 	restoreItemAction *RestoreItemActionPlugin
+	deleteItemAction  *DeleteItemActionPlugin
 }
 
 // NewServer returns a new Server
 func NewServer() Server {
 	log := newLogger()
+	features := veleroflag.NewStringArray()
 
 	return &server{
 		log:               log,
 		logLevelFlag:      logging.LogLevelFlag(log.Level),
+		featureSet:        &features,
 		backupItemAction:  NewBackupItemActionPlugin(serverLogger(log)),
 		volumeSnapshotter: NewVolumeSnapshotterPlugin(serverLogger(log)),
 		objectStore:       NewObjectStorePlugin(serverLogger(log)),
 		restoreItemAction: NewRestoreItemActionPlugin(serverLogger(log)),
+		deleteItemAction:  NewDeleteItemActionPlugin(serverLogger(log)),
 	}
 }
 
 func (s *server) BindFlags(flags *pflag.FlagSet) Server {
-	flags.Var(s.logLevelFlag, "log-level", fmt.Sprintf("the level at which to log. Valid values are %s.", strings.Join(s.logLevelFlag.AllowedValues(), ", ")))
+	flags.Var(s.logLevelFlag, "log-level", fmt.Sprintf("The level at which to log. Valid values are %s.", strings.Join(s.logLevelFlag.AllowedValues(), ", ")))
+	flags.Var(s.featureSet, "features", "List of feature flags for this plugin")
 	s.flagSet = flags
+	s.flagSet.ParseErrorsWhitelist.UnknownFlags = true
 
 	return s
 }
@@ -150,6 +165,18 @@ func (s *server) RegisterRestoreItemActions(m map[string]HandlerInitializer) Ser
 	return s
 }
 
+func (s *server) RegisterDeleteItemAction(name string, initializer HandlerInitializer) Server {
+	s.deleteItemAction.register(name, initializer)
+	return s
+}
+
+func (s *server) RegisterDeleteItemActions(m map[string]HandlerInitializer) Server {
+	for name := range m {
+		s.RegisterDeleteItemAction(name, m[name])
+	}
+	return s
+}
+
 // getNames returns a list of PluginIdentifiers registered with plugin.
 func getNames(command string, kind PluginKind, plugin Interface) []PluginIdentifier {
 	var pluginIdentifiers []PluginIdentifier
@@ -178,6 +205,7 @@ func (s *server) Serve() {
 	pluginIdentifiers = append(pluginIdentifiers, getNames(command, PluginKindVolumeSnapshotter, s.volumeSnapshotter)...)
 	pluginIdentifiers = append(pluginIdentifiers, getNames(command, PluginKindObjectStore, s.objectStore)...)
 	pluginIdentifiers = append(pluginIdentifiers, getNames(command, PluginKindRestoreItemAction, s.restoreItemAction)...)
+	pluginIdentifiers = append(pluginIdentifiers, getNames(command, PluginKindDeleteItemAction, s.deleteItemAction)...)
 
 	pluginLister := NewPluginLister(pluginIdentifiers...)
 
@@ -189,6 +217,7 @@ func (s *server) Serve() {
 			string(PluginKindObjectStore):       s.objectStore,
 			string(PluginKindPluginLister):      NewPluginListerPlugin(pluginLister),
 			string(PluginKindRestoreItemAction): s.restoreItemAction,
+			string(PluginKindDeleteItemAction):  s.deleteItemAction,
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
 	})
