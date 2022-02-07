@@ -18,7 +18,7 @@ This README explains how to install and configure the DigitalOcean Block Storage
   * [Spaces access keys](https://www.digitalocean.com/docs/spaces/how-to/administrative-access/)
   * Spaces bucket
   * Spaces bucket region
-* [Velero](https://velero.io/docs/v1.2.0/basic-install/) v1.20 or newer & prerequisites
+* [Velero](https://velero.io/docs/v1.2.0/basic-install/) v1.2.0 or newer & prerequisites
 
 ### Credentials setup
 
