@@ -46,7 +46,12 @@ ci: test
 
 # container builds a Docker image containing the binary.
 container:
-	docker build -t $(IMAGE):$(VERSION) .
+	docker build --no-cache -t $(IMAGE):$(VERSION) .
+
+# container-arm64 builds an arm64 Docker image containing the binary.
+container-arm64:
+	docker build --no-cache -t $(IMAGE):$(VERSION)-arm64 . -f Dockerfile-arm64 --platform linux/arm64/v8
+
 
 # push pushes the Docker image to its registry.
 push:
