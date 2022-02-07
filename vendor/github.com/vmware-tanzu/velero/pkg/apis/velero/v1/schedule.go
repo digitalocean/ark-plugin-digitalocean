@@ -1,5 +1,5 @@
 /*
-Copyright 2017 the Velero contributors.
+Copyright 2020 the Velero contributors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,12 @@ limitations under the License.
 
 package v1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"fmt"
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // ScheduleSpec defines the specification for a Velero schedule
 type ScheduleSpec struct {
@@ -27,6 +32,12 @@ type ScheduleSpec struct {
 	// Schedule is a Cron expression defining when to run
 	// the Backup.
 	Schedule string `json:"schedule"`
+
+	// UseOwnerReferencesBackup specifies whether to use
+	// OwnerReferences on backups created by this Schedule.
+	// +optional
+	// +nullable
+	UseOwnerReferencesInBackup *bool `json:"useOwnerReferencesInBackup,omitempty"`
 }
 
 // SchedulePhase is a string representation of the lifecycle phase
@@ -94,4 +105,9 @@ type ScheduleList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []Schedule `json:"items"`
+}
+
+// TimestampedName returns the default backup name format based on the schedule
+func (s *Schedule) TimestampedName(timestamp time.Time) string {
+	return fmt.Sprintf("%s-%s", s.Name, timestamp.Format("20060102150405"))
 }
