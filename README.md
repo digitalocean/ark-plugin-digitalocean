@@ -66,7 +66,7 @@ Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use
     velero install \
         --provider velero.io/aws \
         --bucket velero-backups \
-        --plugins velero/velero-plugin-for-aws:v1.0.0,digitalocean/velero-plugin:v1.0.0 \
+        --plugins velero/velero-plugin-for-aws:v1.3.0,digitalocean/velero-plugin:v1.1.0 \
         --backup-location-config s3Url=https://nyc3.digitaloceanspaces.com,region=nyc3 \
         --use-volume-snapshots=false \
         --secret-file=./cloud-credentials
@@ -74,7 +74,7 @@ Edit the `<AWS_ACCESS_KEY_ID>` and `<AWS_SECRET_ACCESS_KEY>` placeholders to use
 
 ### Snapshot configuration
 
-1. Enable the `digitalocean/velero-plugin:v1.0.0` snapshot provider. This command will configure Velero to use the plugin for persistent volume snapshots.
+1. Enable the `digitalocean/velero-plugin:v1.1.0` snapshot provider. This command will configure Velero to use the plugin for persistent volume snapshots.
 
     ```
     velero snapshot-location create default --provider digitalocean.com/velero
