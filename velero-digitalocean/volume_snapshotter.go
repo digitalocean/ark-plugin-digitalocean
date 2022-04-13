@@ -57,7 +57,12 @@ func (b *VolumeSnapshotter) Init(config map[string]string) error {
 	}
 
 	oauthClient := oauth2.NewClient(context.Background(), tokenSource)
-	b.client = godo.NewClient(oauthClient)
+	client, err := godo.New(oauthClient, godo.SetUserAgent("digitalocean-velero-plugin"))
+	if err != nil {
+		return err
+	}
+
+	b.client = client
 
 	return nil
 }
